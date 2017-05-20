@@ -1,0 +1,5 @@
+package: github.com/ldez/jaelon
+import:
+- package: github.com/google/go-github
+- package: github.com/google/go-querystring
+- package: golang.org/x/oauth2
