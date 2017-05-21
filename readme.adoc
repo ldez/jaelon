@@ -1,5 +1,7 @@
 = Jaelon
 
+image:https://travis-ci.org/ldez/jaelon.svg?branch=master["Build Status", link="https://travis-ci.org/ldez/jaelon"]
+
 Check the Milestone.
 
 [source, bash]
