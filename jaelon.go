@@ -4,18 +4,20 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"os"
 	"strconv"
 	"strings"
 	"time"
 
+	"github.com/containous/flaeg"
 	"github.com/google/go-github/github"
 	"golang.org/x/oauth2"
 )
 
 type Configuration struct {
-	Major          int64  `short:"a" description:"TODO"`
-	Minor          int64  `short:"i" description:"TODO"`
-	Current        bool   `short:"c" description:"TODO"`
+	Major          int64  `short:"a" description:"Major version part of the Milestone."`
+	Minor          int64  `short:"i" description:"Minor version part of the Milestone."`
+	Current        bool   `short:"c" description:"Follow the head of master."`
 	Owner          string `short:"o" description:"Repository owner."`
 	RepositoryName string `long:"repo-name" short:"r" description:"Repository name."`
 	GitHubToken    string `long:"token" short:"t" description:"GitHub Token."`
@@ -24,15 +26,31 @@ type Configuration struct {
 
 func main() {
 	config := &Configuration{
-		Major:          1,
-		Minor:          3,
-		Current:        false,
-		Owner:          "containous",
-		RepositoryName: "traefik",
-		GitHubToken:    "",
-		Debug:          true,
+		Major: 1,
+		Minor: 0,
 	}
-	browse(config)
+
+	rootCmd := &flaeg.Command{
+		Name: "jaelon",
+		Description: `Jaelon is a GitHub Milestone checker.
+Check if Pull Requests have a Milestone.
+		`,
+		Config:                config,
+		DefaultPointersConfig: &Configuration{},
+		Run: func() error {
+			if config.Debug {
+				log.Printf("Run Jaelon command with config : %+v\n", config)
+			}
+			required(config.Owner, "owner")
+			required(config.RepositoryName, "repo-name")
+
+			browse(config)
+			return nil
+		},
+	}
+
+	flag := flaeg.New(rootCmd, os.Args[1:])
+	flag.Run()
 }
 
 func browse(config *Configuration) {
@@ -43,7 +61,7 @@ func browse(config *Configuration) {
 	milestone, err := findMilestone(ctx, client, config)
 	check(err)
 
-	// find on master
+	// Find on master
 	baseBranch := "master"
 	previousRef := fmt.Sprintf("v%v.%v.0-rc1", config.Major, config.Minor-1)
 
@@ -57,7 +75,7 @@ func browse(config *Configuration) {
 	prOnMaster := findIssues(ctx, client, config, currentRef, previousRef, baseBranch)
 	checkMilestone(prOnMaster, milestone)
 
-	// find on version branch
+	// Find on version branch
 	if !config.Current {
 		baseBranch = fmt.Sprintf("v%v.%v", config.Major, config.Minor)
 		currentRef = baseBranch
@@ -66,6 +84,7 @@ func browse(config *Configuration) {
 		checkMilestone(prOnBranch, milestone)
 	}
 }
+
 func findIssues(ctx context.Context, client *github.Client, config *Configuration, currentRef string, previousRef string, baseBranch string) []github.Issue {
 
 	// Get previous ref date
@@ -100,6 +119,7 @@ func checkMilestone(allSearchResult []github.Issue, milestone *github.Milestone)
 	for _, issue := range allSearchResult {
 		if issue.Milestone == nil {
 			log.Printf("No Milestone: #%v", *issue.Number)
+			// FIXME 403
 			//ir := &github.IssueRequest{
 			//	Milestone: milestone.ID,
 			//}
@@ -162,6 +182,13 @@ func newGitHubClient(ctx context.Context, token string) *github.Client {
 		client = github.NewClient(tc)
 	}
 	return client
+}
+
+func required(field string, fieldName string) error {
+	if len(field) == 0 {
+		log.Fatalf("%s is mandatory.", fieldName)
+	}
+	return nil
 }
 
 func check(err error) {
