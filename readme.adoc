@@ -1,0 +1,39 @@
+= Jaelon
+
+Check the Milestone.
+
+[source, bash]
+----
+Jaelon is a GitHub Milestone checker.
+Check if Pull Requests have a Milestone.
+
+
+Usage: jaelon [--flag=flag_argument] [-f[flag_argument]] ...     set flag_argument to flag(s)
+   or: jaelon [--flag[=true|false| ]] [-f[true|false| ]] ...     set true/false to boolean flag(s)
+
+Flags:
+-c, --current   Follow the head of master.           (default "false")
+    --debug     Debug mode.                          (default "false")
+-a, --major     Major version part of the Milestone. (default "1")
+-i, --minor     Minor version part of the Milestone. (default "0")
+-o, --owner     Repository owner.
+-r, --repo-name Repository name.
+-t, --token     GitHub Token.
+-h, --help      Print Help (this message) and exit
+----
+
+TODO: Automatically update PR.
+
+== Examples
+
+Check the PR of the Milestone 1.2:
+[source, bash]
+----
+jaelon.go -o"containous" -r"traefik" -a1 -i2 -t"xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+----
+
+Check the PR of the current Milestone 1.4:
+[source, bash]
+----
+jaelon.go -o"containous" -r"traefik" -a1 -i4 -c -t"xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+----
