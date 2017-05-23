@@ -31,11 +31,11 @@ TODO: Automatically update PR.
 Check the PR of the Milestone 1.2:
 [source, bash]
 ----
-jaelon.go -o"containous" -r"traefik" -a1 -i2 -t"xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+jaelon -o"containous" -r"traefik" -a1 -i2 -t"xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
 ----
 
 Check the PR of the current Milestone 1.4:
 [source, bash]
 ----
-jaelon.go -o"containous" -r"traefik" -a1 -i4 -c -t"xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+jaelon -o"containous" -r"traefik" -a1 -i4 -c -t"xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
 ----
