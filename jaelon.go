@@ -15,19 +15,27 @@ import (
 )
 
 type Configuration struct {
-	Major          int64  `short:"a" description:"Major version part of the Milestone."`
-	Minor          int64  `short:"i" description:"Minor version part of the Milestone."`
-	Current        bool   `short:"c" description:"Follow the head of master."`
-	Owner          string `short:"o" description:"Repository owner."`
-	RepositoryName string `long:"repo-name" short:"r" description:"Repository name."`
-	GitHubToken    string `long:"token" short:"t" description:"GitHub Token."`
-	Debug          bool   `long:"debug" description:"Debug mode."`
+	Major                   int64 `short:"a" description:"Major version part of the Milestone."`
+	Minor                   int64 `short:"i" description:"Minor version part of the Milestone."`
+	Current                 bool  `short:"c" description:"Follow the head of master."`
+	CurrentVersionTemplate  string
+	PreviousVersionTemplate string
+	ReleaseBranchTemplate   string
+	BaseBranch              string
+	Owner                   string `short:"o" description:"Repository owner."`
+	RepositoryName          string `long:"repo-name" short:"r" description:"Repository name."`
+	GitHubToken             string `long:"token" short:"t" description:"GitHub Token."`
+	Debug                   bool   `long:"debug" description:"Debug mode."`
 }
 
 func main() {
 	config := &Configuration{
 		Major: 1,
 		Minor: 0,
+		CurrentVersionTemplate:  "v%v.%v.0-rc1",
+		PreviousVersionTemplate: "v%v.%v.0-rc1",
+		ReleaseBranchTemplate:   "v%v.%v",
+		BaseBranch:              "master",
 	}
 
 	rootCmd := &flaeg.Command{
@@ -62,14 +70,14 @@ func browse(config *Configuration) {
 	check(err)
 
 	// Find on master
-	baseBranch := "master"
-	previousRef := fmt.Sprintf("v%v.%v.0-rc1", config.Major, config.Minor-1)
+	baseBranch := config.BaseBranch
+	previousRef := fmt.Sprintf(config.PreviousVersionTemplate, config.Major, config.Minor-1)
 
 	var currentRef string
 	if config.Current {
 		currentRef = baseBranch
 	} else {
-		currentRef = fmt.Sprintf("v%v.%v.0-rc1", config.Major, config.Minor)
+		currentRef = fmt.Sprintf(config.CurrentVersionTemplate, config.Major, config.Minor)
 	}
 
 	prOnMaster := findIssues(ctx, client, config, currentRef, previousRef, baseBranch)
@@ -77,7 +85,7 @@ func browse(config *Configuration) {
 
 	// Find on version branch
 	if !config.Current {
-		baseBranch = fmt.Sprintf("v%v.%v", config.Major, config.Minor)
+		baseBranch = fmt.Sprintf(config.ReleaseBranchTemplate, config.Major, config.Minor)
 		currentRef = baseBranch
 
 		prOnBranch := findIssues(ctx, client, config, currentRef, previousRef, baseBranch)
