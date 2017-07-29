@@ -99,13 +99,13 @@ func findIssues(ctx context.Context, client *github.Client, config *Configuratio
 	commitPreviousRef, _, err := client.Repositories.GetCommit(ctx, config.Owner, config.RepositoryName, previousRef)
 	check(err)
 
-	datePreviousRef := commitPreviousRef.Commit.Committer.Date.Add(1 * time.Second).Format("2006-01-02T15:04:05Z")
+	datePreviousRef := commitPreviousRef.Commit.Committer.GetDate().Add(1 * time.Second).Format("2006-01-02T15:04:05Z")
 
 	// Get current ref version date
 	commitCurrentRef, _, err := client.Repositories.GetCommit(ctx, config.Owner, config.RepositoryName, currentRef)
 	check(err)
 
-	dateCurrentRef := commitCurrentRef.Commit.Committer.Date.Format("2006-01-02T15:04:05Z")
+	dateCurrentRef := commitCurrentRef.Commit.Committer.GetDate().Format("2006-01-02T15:04:05Z")
 
 	// Search PR
 	query := fmt.Sprintf("type:pr is:merged repo:%s/%s base:%s merged:%s..%s",
@@ -126,17 +126,17 @@ func findIssues(ctx context.Context, client *github.Client, config *Configuratio
 func checkMilestone(allSearchResult []github.Issue, milestone *github.Milestone) {
 	for _, issue := range allSearchResult {
 		if issue.Milestone == nil {
-			log.Printf("No Milestone: #%v", *issue.Number)
+			log.Printf("No Milestone: #%v", issue.GetNumber())
 			// FIXME 403
 			//ir := &github.IssueRequest{
 			//	Milestone: milestone.ID,
 			//}
 			//_, _, err = client.Issues.Edit(ctx, config.Owner, config.RepositoryName, *issue.Number, ir)
 			//check(err)
-		} else if *issue.Milestone.ID == *milestone.ID {
+		} else if issue.Milestone.GetID() == milestone.GetID() {
 			// no op
 		} else {
-			log.Printf("Milestone divergence: #%v. %s instead of %s", *issue.Number, *issue.Milestone.Title, *milestone.Title)
+			log.Printf("Milestone divergence: #%v. %s instead of %s", issue.GetNumber(), issue.Milestone.GetTitle(), milestone.GetTitle())
 		}
 	}
 }
@@ -152,8 +152,8 @@ func findMilestone(ctx context.Context, client *github.Client, config *Configura
 	expectedTitle := strconv.FormatInt(config.Major, 10) + "." + strconv.FormatInt(config.Minor, 10)
 
 	for _, milestone := range milestones {
-		if strings.Contains(*milestone.Title, expectedTitle) {
-			fmt.Println(*milestone.Title)
+		if strings.Contains(milestone.GetTitle(), expectedTitle) {
+			fmt.Println(milestone.GetTitle())
 			return milestone, nil
 		}
 	}
