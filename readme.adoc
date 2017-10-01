@@ -24,8 +24,6 @@ Flags:
 -h, --help      Print Help (this message) and exit
 ----
 
-TODO: Automatically update PR.
-
 == Examples
 
 Check the PR of the Milestone 1.2:
