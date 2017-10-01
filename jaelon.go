@@ -5,177 +5,129 @@ import (
 	"fmt"
 	"log"
 	"os"
-	"strconv"
-	"strings"
-	"time"
 
 	"github.com/containous/flaeg"
 	"github.com/google/go-github/github"
+	"github.com/ldez/jaelon/issue"
+	"github.com/ldez/jaelon/milestone"
+	"github.com/ldez/jaelon/types"
 	"golang.org/x/oauth2"
 )
 
-type Configuration struct {
-	Major                   int64 `short:"a" description:"Major version part of the Milestone."`
-	Minor                   int64 `short:"i" description:"Minor version part of the Milestone."`
-	Current                 bool  `short:"c" description:"Follow the head of master."`
-	CurrentVersionTemplate  string
-	PreviousVersionTemplate string
-	ReleaseBranchTemplate   string
-	BaseBranch              string
-	Owner                   string `short:"o" description:"Repository owner."`
-	RepositoryName          string `long:"repo-name" short:"r" description:"Repository name."`
-	GitHubToken             string `long:"token" short:"t" description:"GitHub Token."`
-	Debug                   bool   `long:"debug" description:"Debug mode."`
-}
-
 func main() {
-	config := &Configuration{
-		Major: 1,
-		Minor: 0,
+	config := &types.Configuration{
 		CurrentVersionTemplate:  "v%v.%v.0-rc1",
 		PreviousVersionTemplate: "v%v.%v.0-rc1",
 		ReleaseBranchTemplate:   "v%v.%v",
 		BaseBranch:              "master",
+		Major:                   1,
+		Minor:                   0,
+		DryRun:                  true,
 	}
+
+	defaultConfig := &types.Configuration{}
 
 	rootCmd := &flaeg.Command{
 		Name: "jaelon",
-		Description: `Jaelon is a GitHub Milestone checker.
-Check if Pull Requests have a Milestone.
-		`,
+		Description: `Jaelon is a GitHub Milestone checker and fixer.
+Check if Pull Requests have a Milestone.`,
+		DefaultPointersConfig: defaultConfig,
 		Config:                config,
-		DefaultPointersConfig: &Configuration{},
-		Run: func() error {
-			if config.Debug {
-				log.Printf("Run Jaelon command with config : %+v\n", config)
-			}
-			required(config.Owner, "owner")
-			required(config.RepositoryName, "repo-name")
-
-			browse(config)
-			return nil
-		},
+		Run:                   runCmd(config),
 	}
 
 	flag := flaeg.New(rootCmd, os.Args[1:])
 	flag.Run()
 }
 
-func browse(config *Configuration) {
-	ctx := context.Background()
+func runCmd(config *types.Configuration) func() error {
+	return func() error {
+		if config.Debug {
+			log.Printf("Run Jaelon command with config : %+v\n", config)
+		}
 
-	client := newGitHubClient(ctx, config.GitHubToken)
+		if config.DryRun {
+			log.Print("IMPORTANT: you are using the dry-run mode. Use `--dry-run=false` to disable this mode.")
+		}
 
-	milestone, err := findMilestone(ctx, client, config)
-	check(err)
+		err := required(config.Owner, "owner")
+		if err != nil {
+			log.Fatal(err)
+		}
+		err = required(config.RepositoryName, "repo-name")
+		if err != nil {
+			log.Fatal(err)
+		}
 
-	// Find on master
-	baseBranch := config.BaseBranch
-	previousRef := fmt.Sprintf(config.PreviousVersionTemplate, config.Major, config.Minor-1)
+		ctx := context.Background()
+		client := newGitHubClient(ctx, config.GitHubToken)
 
+		err = browse(ctx, client, config)
+		if err != nil {
+			log.Fatal(err)
+		}
+		return nil
+	}
+}
+
+func browse(ctx context.Context, client *github.Client, config *types.Configuration) error {
+
+	repoID := types.RepoID{
+		Owner:          config.Owner,
+		RepositoryName: config.RepositoryName,
+	}
+
+	mile, err := milestone.Find(ctx, client, repoID.Owner, repoID.RepositoryName, config.Major, config.Minor)
+	if err != nil {
+		return err
+	}
+
+	criterion := []types.SearchCriteria{
+		makeSearchCriteriaMaster(config),
+	}
+
+	if !config.Current {
+		criteria := makeSearchCriteriaVersionBranch(config)
+		criterion = append(criterion, criteria)
+	}
+
+	for _, criteria := range criterion {
+		err = issue.AddMilestone(ctx, client, repoID, criteria, mile, config.Debug, config.DryRun)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func makeSearchCriteriaMaster(config *types.Configuration) types.SearchCriteria {
 	var currentRef string
 	if config.Current {
-		currentRef = baseBranch
+		currentRef = config.BaseBranch
 	} else {
 		currentRef = fmt.Sprintf(config.CurrentVersionTemplate, config.Major, config.Minor)
 	}
 
-	prOnMaster := findIssues(ctx, client, config, currentRef, previousRef, baseBranch)
-	checkMilestone(prOnMaster, milestone)
-
-	// Find on version branch
-	if !config.Current {
-		baseBranch = fmt.Sprintf(config.ReleaseBranchTemplate, config.Major, config.Minor)
-		currentRef = baseBranch
-
-		prOnBranch := findIssues(ctx, client, config, currentRef, previousRef, baseBranch)
-		checkMilestone(prOnBranch, milestone)
+	return types.SearchCriteria{
+		BaseBranch:  config.BaseBranch,
+		CurrentRef:  currentRef,
+		PreviousRef: getPreviousRef(config),
 	}
 }
 
-func findIssues(ctx context.Context, client *github.Client, config *Configuration, currentRef string, previousRef string, baseBranch string) []github.Issue {
+func makeSearchCriteriaVersionBranch(config *types.Configuration) types.SearchCriteria {
+	baseBranch := fmt.Sprintf(config.ReleaseBranchTemplate, config.Major, config.Minor)
 
-	// Get previous ref date
-	commitPreviousRef, _, err := client.Repositories.GetCommit(ctx, config.Owner, config.RepositoryName, previousRef)
-	check(err)
-
-	datePreviousRef := commitPreviousRef.Commit.Committer.GetDate().Add(1 * time.Second).Format("2006-01-02T15:04:05Z")
-
-	// Get current ref version date
-	commitCurrentRef, _, err := client.Repositories.GetCommit(ctx, config.Owner, config.RepositoryName, currentRef)
-	check(err)
-
-	dateCurrentRef := commitCurrentRef.Commit.Committer.GetDate().Format("2006-01-02T15:04:05Z")
-
-	// Search PR
-	query := fmt.Sprintf("type:pr is:merged repo:%s/%s base:%s merged:%s..%s",
-		config.Owner, config.RepositoryName, baseBranch, datePreviousRef, dateCurrentRef)
-	if config.Debug {
-		log.Println(query)
-	}
-
-	searchOptions := &github.SearchOptions{
-		Sort:        "created",
-		Order:       "asc",
-		ListOptions: github.ListOptions{PerPage: 20},
-	}
-
-	return searchAllIssues(ctx, client, query, searchOptions)
-}
-
-func checkMilestone(allSearchResult []github.Issue, milestone *github.Milestone) {
-	for _, issue := range allSearchResult {
-		if issue.Milestone == nil {
-			log.Printf("No Milestone: #%v", issue.GetNumber())
-			// FIXME 403
-			//ir := &github.IssueRequest{
-			//	Milestone: milestone.ID,
-			//}
-			//_, _, err = client.Issues.Edit(ctx, config.Owner, config.RepositoryName, *issue.Number, ir)
-			//check(err)
-		} else if issue.Milestone.GetID() == milestone.GetID() {
-			// no op
-		} else {
-			log.Printf("Milestone divergence: #%v. %s instead of %s", issue.GetNumber(), issue.Milestone.GetTitle(), milestone.GetTitle())
-		}
+	return types.SearchCriteria{
+		BaseBranch:  baseBranch,
+		CurrentRef:  baseBranch,
+		PreviousRef: getPreviousRef(config),
 	}
 }
 
-func findMilestone(ctx context.Context, client *github.Client, config *Configuration) (*github.Milestone, error) {
-	opt := &github.MilestoneListOptions{
-		State: "all",
-	}
-
-	milestones, _, err := client.Issues.ListMilestones(ctx, config.Owner, config.RepositoryName, opt)
-	check(err)
-
-	expectedTitle := strconv.FormatInt(config.Major, 10) + "." + strconv.FormatInt(config.Minor, 10)
-
-	for _, milestone := range milestones {
-		if strings.Contains(milestone.GetTitle(), expectedTitle) {
-			fmt.Println(milestone.GetTitle())
-			return milestone, nil
-		}
-	}
-	return nil, fmt.Errorf("Milestone not found: %s", expectedTitle)
-}
-
-func searchAllIssues(ctx context.Context, client *github.Client, query string, searchOptions *github.SearchOptions) []github.Issue {
-	var allSearchResult []github.Issue
-	for {
-		issuesSearchResult, resp, err := client.Search.Issues(ctx, query, searchOptions)
-		if err != nil {
-			log.Fatal(err)
-		}
-		for _, issueResult := range issuesSearchResult.Issues {
-			allSearchResult = append(allSearchResult, issueResult)
-		}
-		if resp.NextPage == 0 {
-			break
-		}
-		searchOptions.Page = resp.NextPage
-	}
-	return allSearchResult
+func getPreviousRef(config *types.Configuration) string {
+	return fmt.Sprintf(config.PreviousVersionTemplate, config.Major, config.Minor-1)
 }
 
 func newGitHubClient(ctx context.Context, token string) *github.Client {
@@ -197,10 +149,4 @@ func required(field string, fieldName string) error {
 		log.Fatalf("%s is mandatory.", fieldName)
 	}
 	return nil
-}
-
-func check(err error) {
-	if err != nil {
-		log.Fatal(err)
-	}
 }

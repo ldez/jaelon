@@ -6,9 +6,8 @@ Check the Milestone.
 
 [source, bash]
 ----
-Jaelon is a GitHub Milestone checker.
+Jaelon is a GitHub Milestone checker and fixer.
 Check if Pull Requests have a Milestone.
-
 
 Usage: jaelon [--flag=flag_argument] [-f[flag_argument]] ...     set flag_argument to flag(s)
    or: jaelon [--flag[=true|false| ]] [-f[true|false| ]] ...     set true/false to boolean flag(s)
@@ -16,6 +15,7 @@ Usage: jaelon [--flag=flag_argument] [-f[flag_argument]] ...     set flag_argume
 Flags:
 -c, --current   Follow the head of master.           (default "false")
     --debug     Debug mode.                          (default "false")
+    --dry-run   Dry run mode.                        (default "true")
 -a, --major     Major version part of the Milestone. (default "1")
 -i, --minor     Minor version part of the Milestone. (default "0")
 -o, --owner     Repository owner.
