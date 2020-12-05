@@ -1,6 +1,6 @@
 = Jaelon
 
-image:https://travis-ci.org/ldez/jaelon.svg?branch=master["Build Status", link="https://travis-ci.org/ldez/jaelon"]
+image:https://github.com/ldez/jaelon/workflows/Main/badge.svg?branch=master["Build Status", link="https://github.com/ldez/jaelon/actions"]
 
 Check the Milestone.
 

@@ -1,11 +1,6 @@
-.PHONY: all
+.PHONY: clean test build check fmt
 
-PKGS := $(shell go list ./... | grep -v '/vendor/')
-
-default: clean lint checks test-unit build
-
-dependencies:
-	dep ensure
+default: clean check test build
 
 clean:
 	rm -f cover.out
@@ -13,12 +8,8 @@ clean:
 build:
 	go build
 
-test-unit:
-	go test -v -cover $(PKGS)
+test:
+	go test -v ./...
 
-lint:
-	golint -set_exit_status $(PKGS)
-
-checks:
-	staticcheck $(PKGS)
-	gosimple $(PKGS)
+check:
+	golangci-lint run

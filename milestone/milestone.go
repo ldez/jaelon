@@ -9,7 +9,7 @@ import (
 	"github.com/google/go-github/github"
 )
 
-// Find Milestone
+// Find Milestone.
 func Find(ctx context.Context, client *github.Client, owner, repositoryName string, major, minor int64) (*github.Milestone, error) {
 	opt := &github.MilestoneListOptions{
 		State: "all",

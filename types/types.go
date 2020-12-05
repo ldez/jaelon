@@ -1,6 +1,6 @@
 package types
 
-// Configuration Jaelon configuration
+// Configuration Jaelon configuration.
 type Configuration struct {
 	CurrentVersionTemplate  string
 	PreviousVersionTemplate string
@@ -16,13 +16,13 @@ type Configuration struct {
 	DryRun                  bool   `long:"dry-run" description:"Dry run mode."`
 }
 
-// RepoID GitHub repo ID
+// RepoID GitHub repo ID.
 type RepoID struct {
 	Owner          string
 	RepositoryName string
 }
 
-// SearchCriteria search criterion
+// SearchCriteria search criterion.
 type SearchCriteria struct {
 	CurrentRef  string
 	PreviousRef string

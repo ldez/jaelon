@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log"
 	"os"
@@ -11,13 +12,15 @@ import (
 	"github.com/ldez/jaelon/issue"
 	"github.com/ldez/jaelon/milestone"
 	"github.com/ldez/jaelon/types"
+	"github.com/ogier/pflag"
 	"golang.org/x/oauth2"
 )
 
 func main() {
+	log.SetFlags(log.Ldate | log.Ltime | log.Llongfile)
 	config := &types.Configuration{
-		CurrentVersionTemplate:  "v%v.%v.0-rc1",
-		PreviousVersionTemplate: "v%v.%v.0-rc1",
+		CurrentVersionTemplate:  "v%v.%v.0",
+		PreviousVersionTemplate: "v%v.%v.0",
 		ReleaseBranchTemplate:   "v%v.%v",
 		BaseBranch:              "master",
 		Major:                   1,
@@ -37,7 +40,12 @@ Check if Pull Requests have a Milestone.`,
 	}
 
 	flag := flaeg.New(rootCmd, os.Args[1:])
-	flag.Run()
+	if err := flag.Run(); err != nil {
+		if errors.Is(err, pflag.ErrHelp) {
+			os.Exit(0)
+		}
+		log.Fatalf("Error: %v\n", err)
+	}
 }
 
 func runCmd(config *types.Configuration) func() error {
@@ -52,26 +60,21 @@ func runCmd(config *types.Configuration) func() error {
 
 		err := required(config.Owner, "owner")
 		if err != nil {
-			log.Fatal(err)
+			return err
 		}
 		err = required(config.RepositoryName, "repo-name")
 		if err != nil {
-			log.Fatal(err)
+			return err
 		}
 
 		ctx := context.Background()
 		client := newGitHubClient(ctx, config.GitHubToken)
 
-		err = browse(ctx, client, config)
-		if err != nil {
-			log.Fatal(err)
-		}
-		return nil
+		return browse(ctx, client, config)
 	}
 }
 
 func browse(ctx context.Context, client *github.Client, config *types.Configuration) error {
-
 	repoID := types.RepoID{
 		Owner:          config.Owner,
 		RepositoryName: config.RepositoryName,
