@@ -16,7 +16,10 @@ linters-settings:
 linters:
   enable-all: true
   disable:
-    - maligned
+    - golint # deprecated
+    - scopelint # deprecated
+    - interfacer # deprecated
+    - maligned # deprecated
     - lll
     - dupl
     - prealloc
@@ -31,6 +34,7 @@ linters:
     - tparallel
     - nestif
     - exhaustivestruct
+    - forbidigo
 
 issues:
   exclude-use-default: false
