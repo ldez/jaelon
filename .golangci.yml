@@ -4,37 +4,75 @@ run:
 
 linters-settings:
   govet:
-    check-shadowing: true
+    enable-all: true
+    disable:
+      - fieldalignment
   gocyclo:
-    min-complexity: 12
+    min-complexity: 16
   goconst:
     min-len: 3
     min-occurrences: 3
   misspell:
     locale: US
+  funlen:
+    lines: 60 # default 60
+    statements: 40 # default 40
+  gofumpt:
+    extra-rules: true
+  depguard:
+    list-type: blacklist
+    include-go-root: false
+    packages:
+      - github.com/pkg/errors
+  godox:
+    keywords:
+      - FIXME
+  gocritic:
+    enabled-tags:
+      - diagnostic
+      - style
+      - performance
+    disabled-checks:
+      - sloppyReassign
+      - rangeValCopy
+      - octalLiteral
+      - paramTypeCombine # already handle by gofumpt.extra-rules
+    settings:
+      hugeParam:
+        sizeThreshold: 100
 
 linters:
   enable-all: true
   disable:
+    - deadcode # deprecated
+    - exhaustivestruct # deprecated
     - golint # deprecated
-    - scopelint # deprecated
+    - ifshort # deprecated
     - interfacer # deprecated
     - maligned # deprecated
-    - lll
+    - nosnakecase # deprecated
+    - scopelint # deprecated
+    - structcheck # deprecated
+    - varcheck # deprecated
+    - sqlclosecheck # not relevant (SQL)
+    - rowserrcheck # not relevant (SQL)
+    - execinquery # not relevant (SQL)
+    - cyclop # duplicate of gocyclo
     - dupl
-    - prealloc
-    - scopelint
-    - wsl
-    - nlreturn
-    - gomnd
-    - goerr113
-    - wrapcheck
-    - testpackage
-    - paralleltest
-    - tparallel
-    - nestif
-    - exhaustivestruct
+    - exhaustive
+    - exhaustruct
     - forbidigo
+    - goerr113
+    - gomnd
+    - lll
+    - nestif
+    - nlreturn
+    - paralleltest
+    - prealloc
+    - testpackage
+    - tparallel
+    - wrapcheck
+    - wsl
 
 issues:
   exclude-use-default: false
@@ -42,6 +80,7 @@ issues:
   max-same-issues: 0
   exclude:
     - 'ST1000: at least one file in a package should have a package comment'
+    - 'package-comments: should have a package comment'
   exclude-rules:
     - path: (.+)_test.go
       linters:

@@ -8,7 +8,7 @@ import (
 	"os"
 
 	"github.com/containous/flaeg"
-	"github.com/google/go-github/github"
+	"github.com/google/go-github/v50/github"
 	"github.com/ldez/jaelon/issue"
 	"github.com/ldez/jaelon/milestone"
 	"github.com/ldez/jaelon/types"
@@ -135,7 +135,7 @@ func getPreviousRef(config *types.Configuration) string {
 
 func newGitHubClient(ctx context.Context, token string) *github.Client {
 	var client *github.Client
-	if len(token) == 0 {
+	if token == "" {
 		client = github.NewClient(nil)
 	} else {
 		ts := oauth2.StaticTokenSource(
@@ -147,8 +147,8 @@ func newGitHubClient(ctx context.Context, token string) *github.Client {
 	return client
 }
 
-func required(field string, fieldName string) error {
-	if len(field) == 0 {
+func required(field, fieldName string) error {
+	if field == "" {
 		log.Fatalf("%s is mandatory.", fieldName)
 	}
 	return nil

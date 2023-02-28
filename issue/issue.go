@@ -6,7 +6,7 @@ import (
 	"log"
 	"time"
 
-	"github.com/google/go-github/github"
+	"github.com/google/go-github/v50/github"
 	"github.com/ldez/jaelon/types"
 )
 
@@ -48,7 +48,7 @@ func AddMilestone(ctx context.Context, client *github.Client, repoID types.RepoI
 
 func makeQuery(ctx context.Context, client *github.Client, repoID types.RepoID, criteria types.SearchCriteria, verbose bool) (string, error) {
 	// Get previous ref date
-	commitPreviousRef, _, err := client.Repositories.GetCommit(ctx, repoID.Owner, repoID.RepositoryName, criteria.PreviousRef)
+	commitPreviousRef, _, err := client.Repositories.GetCommit(ctx, repoID.Owner, repoID.RepositoryName, criteria.PreviousRef, nil)
 	if err != nil {
 		return "", err
 	}
@@ -56,7 +56,7 @@ func makeQuery(ctx context.Context, client *github.Client, repoID types.RepoID, 
 	datePreviousRef := commitPreviousRef.Commit.Committer.GetDate().Add(1 * time.Second).Format("2006-01-02T15:04:05Z")
 
 	// Get current ref version date
-	commitCurrentRef, _, err := client.Repositories.GetCommit(ctx, repoID.Owner, repoID.RepositoryName, criteria.CurrentRef)
+	commitCurrentRef, _, err := client.Repositories.GetCommit(ctx, repoID.Owner, repoID.RepositoryName, criteria.CurrentRef, nil)
 	if err != nil {
 		return "", err
 	}
@@ -73,7 +73,7 @@ func makeQuery(ctx context.Context, client *github.Client, repoID types.RepoID, 
 	return query, nil
 }
 
-func applyMilestone(ctx context.Context, client *github.Client, repoID types.RepoID, issue github.Issue, mile *github.Milestone, dryRun bool) error {
+func applyMilestone(ctx context.Context, client *github.Client, repoID types.RepoID, issue *github.Issue, mile *github.Milestone, dryRun bool) error {
 	switch {
 	case issue.Milestone == nil:
 		log.Printf("%s No Milestone: https://github.com/%s/%s/pull/%d", issue.GetClosedAt(), repoID.Owner, repoID.RepositoryName, issue.GetNumber())
