@@ -29,11 +29,11 @@ Flags:
 Check the PR of the Milestone 1.2:
 [source, bash]
 ----
-jaelon -o"containous" -r"traefik" -a1 -i2 -t"xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+jaelon -o "traefik" -r "traefik" -a 1 -i 2 -t"xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
 ----
 
 Check the PR of the current Milestone 1.4:
 [source, bash]
 ----
-jaelon -o"containous" -r"traefik" -a1 -i4 -c -t"xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+jaelon -o "traefik" -r "traefik" -a 1 -i 4 -c -t"xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
 ----

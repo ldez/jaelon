@@ -73,6 +73,7 @@ linters:
     - tparallel
     - wrapcheck
     - wsl
+    - varnamelen
 
 issues:
   exclude-use-default: false

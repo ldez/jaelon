@@ -2,76 +2,147 @@ package main
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"log"
 	"os"
+	"os/signal"
+	"syscall"
 
-	"github.com/containous/flaeg"
+	"github.com/ettle/strcase"
 	"github.com/google/go-github/v50/github"
 	"github.com/ldez/jaelon/issue"
 	"github.com/ldez/jaelon/milestone"
 	"github.com/ldez/jaelon/types"
-	"github.com/ogier/pflag"
+	"github.com/urfave/cli/v2"
 	"golang.org/x/oauth2"
 )
 
-func main() {
-	log.SetFlags(log.Ldate | log.Ltime | log.Llongfile)
-	config := &types.Configuration{
-		CurrentVersionTemplate:  "v%v.%v.0",
-		PreviousVersionTemplate: "v%v.%v.0",
-		ReleaseBranchTemplate:   "v%v.%v",
-		BaseBranch:              "master",
-		Major:                   1,
-		Minor:                   0,
-		DryRun:                  true,
-	}
+const (
+	flagDebug       = "debug"
+	flagCurrent     = "current"
+	flagDryRun      = "dry-run"
+	flagMajor       = "major"
+	flagMinor       = "minor"
+	flagOwner       = "owner"
+	flagRepoName    = "repo-name"
+	flagGitHubToken = "github-token"
+)
 
-	defaultConfig := &types.Configuration{}
-
-	rootCmd := &flaeg.Command{
-		Name: "jaelon",
-		Description: `Jaelon is a GitHub Milestone checker and fixer.
-Check if Pull Requests have a Milestone.`,
-		DefaultPointersConfig: defaultConfig,
-		Config:                config,
-		Run:                   runCmd(config),
-	}
-
-	flag := flaeg.New(rootCmd, os.Args[1:])
-	if err := flag.Run(); err != nil {
-		if errors.Is(err, pflag.ErrHelp) {
-			os.Exit(0)
-		}
-		log.Fatalf("Error: %v\n", err)
+func getFlags() []cli.Flag {
+	return []cli.Flag{
+		&cli.BoolFlag{
+			Name:    "c",
+			Usage:   "Follow the head of master.",
+			EnvVars: []string{strcase.ToSNAKE(flagCurrent)},
+			Aliases: []string{flagCurrent},
+		},
+		&cli.BoolFlag{
+			Name:    flagDebug,
+			Usage:   "Debug mode.",
+			EnvVars: []string{strcase.ToSNAKE(flagDebug)},
+		},
+		&cli.BoolFlag{
+			Name:    flagDryRun,
+			Usage:   "Debug mode.",
+			Value:   true,
+			EnvVars: []string{strcase.ToSNAKE(flagDryRun)},
+		},
+		&cli.Int64Flag{
+			Name:    "a",
+			Usage:   "Major version part of the Milestone.",
+			Value:   1,
+			EnvVars: []string{strcase.ToSNAKE(flagMajor)},
+			Aliases: []string{flagMajor},
+		},
+		&cli.Int64Flag{
+			Name:    "i",
+			Usage:   "Minor version part of the Milestone.",
+			Value:   0,
+			EnvVars: []string{strcase.ToSNAKE(flagMinor)},
+			Aliases: []string{flagMinor},
+		},
+		&cli.StringFlag{
+			Name:     "o",
+			Usage:    "Repository owner.",
+			EnvVars:  []string{strcase.ToSNAKE(flagOwner)},
+			Aliases:  []string{flagOwner},
+			Required: true,
+		},
+		&cli.StringFlag{
+			Name:     "r",
+			Usage:    "Repository name.",
+			EnvVars:  []string{strcase.ToSNAKE(flagRepoName)},
+			Aliases:  []string{flagRepoName},
+			Required: true,
+		},
+		&cli.StringFlag{
+			Name:    "t",
+			Usage:   "GitHub Token.",
+			EnvVars: []string{strcase.ToSNAKE(flagGitHubToken)},
+			Aliases: []string{flagGitHubToken, "token"},
+		},
 	}
 }
 
-func runCmd(config *types.Configuration) func() error {
-	return func() error {
-		if config.Debug {
-			log.Printf("Run Jaelon command with config : %+v\n", config)
-		}
+func main() {
+	log.SetFlags(log.Ldate | log.Ltime | log.Llongfile)
 
-		if config.DryRun {
-			log.Print("IMPORTANT: you are using the dry-run mode. Use `--dry-run=false` to disable this mode.")
-		}
-
-		err := required(config.Owner, "owner")
-		if err != nil {
-			return err
-		}
-		err = required(config.RepositoryName, "repo-name")
-		if err != nil {
-			return err
-		}
-
-		ctx := context.Background()
-		client := newGitHubClient(ctx, config.GitHubToken)
-
-		return browse(ctx, client, config)
+	err := run()
+	if err != nil {
+		log.Fatalf("Error while executing command: %v", err)
 	}
+}
+
+func run() error {
+	app := &cli.App{
+		Name: "jaelon",
+		Usage: `GitHub Milestone checker and fixer.
+Check if Pull Requests have a Milestone.`,
+		Flags: getFlags(),
+		Action: func(c *cli.Context) error {
+			config := &types.Configuration{
+				CurrentVersionTemplate:  "v%v.%v.0",
+				PreviousVersionTemplate: "v%v.%v.0",
+				ReleaseBranchTemplate:   "v%v.%v",
+				BaseBranch:              "master",
+				Major:                   c.Int64(flagMajor),
+				Minor:                   c.Int64(flagMinor),
+				Current:                 c.Bool(flagCurrent),
+				Owner:                   c.String(flagOwner),
+				RepositoryName:          c.String(flagRepoName),
+				GitHubToken:             c.String(flagGitHubToken),
+				Debug:                   c.Bool(flagDebug),
+				DryRun:                  c.Bool(flagDryRun),
+			}
+
+			return runCmd(config)
+		},
+	}
+
+	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer cancel()
+
+	err := app.RunContext(ctx, os.Args)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func runCmd(config *types.Configuration) error {
+	if config.Debug {
+		log.Printf("Run Jaelon command with config : %+v\n", config)
+	}
+
+	if config.DryRun {
+		log.Print("IMPORTANT: you are using the dry-run mode. Use `--dry-run=false` to disable this mode.")
+	}
+
+	ctx := context.Background()
+	client := newGitHubClient(ctx, config.GitHubToken)
+
+	return browse(ctx, client, config)
 }
 
 func browse(ctx context.Context, client *github.Client, config *types.Configuration) error {
@@ -145,11 +216,4 @@ func newGitHubClient(ctx context.Context, token string) *github.Client {
 		client = github.NewClient(tc)
 	}
 	return client
-}
-
-func required(field, fieldName string) error {
-	if field == "" {
-		log.Fatalf("%s is mandatory.", fieldName)
-	}
-	return nil
 }

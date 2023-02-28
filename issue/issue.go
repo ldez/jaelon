@@ -14,7 +14,7 @@ import (
 func AddMilestone(ctx context.Context, client *github.Client, repoID types.RepoID, criteria types.SearchCriteria, mile *github.Milestone, verbose, dryRun bool) error {
 	query, err := makeQuery(ctx, client, repoID, criteria, verbose)
 	if err != nil {
-		return err
+		return fmt.Errorf("make query: %w", err)
 	}
 
 	searchOptions := &github.SearchOptions{
@@ -33,7 +33,7 @@ func AddMilestone(ctx context.Context, client *github.Client, repoID types.RepoI
 		for _, issu := range issuesSearchResult.Issues {
 			err = applyMilestone(ctx, client, repoID, issu, mile, dryRun)
 			if err != nil {
-				return err
+				return fmt.Errorf("apply milestone: %w", err)
 			}
 		}
 
@@ -48,17 +48,23 @@ func AddMilestone(ctx context.Context, client *github.Client, repoID types.RepoI
 
 func makeQuery(ctx context.Context, client *github.Client, repoID types.RepoID, criteria types.SearchCriteria, verbose bool) (string, error) {
 	// Get previous ref date
+	if verbose {
+		log.Printf("get previous commit [%s/%s@%s]", repoID.Owner, repoID.RepositoryName, criteria.PreviousRef)
+	}
 	commitPreviousRef, _, err := client.Repositories.GetCommit(ctx, repoID.Owner, repoID.RepositoryName, criteria.PreviousRef, nil)
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("get previous commit [%s/%s@%s]: %w", repoID.Owner, repoID.RepositoryName, criteria.PreviousRef, err)
 	}
 
 	datePreviousRef := commitPreviousRef.Commit.Committer.GetDate().Add(1 * time.Second).Format("2006-01-02T15:04:05Z")
 
 	// Get current ref version date
+	if verbose {
+		log.Printf("get previous commit [%s/%s@%s]", repoID.Owner, repoID.RepositoryName, criteria.CurrentRef)
+	}
 	commitCurrentRef, _, err := client.Repositories.GetCommit(ctx, repoID.Owner, repoID.RepositoryName, criteria.CurrentRef, nil)
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("get current commit [%s/%s@%s]: %w", repoID.Owner, repoID.RepositoryName, criteria.CurrentRef, err)
 	}
 
 	dateCurrentRef := commitCurrentRef.Commit.Committer.GetDate().Format("2006-01-02T15:04:05Z")
@@ -83,7 +89,7 @@ func applyMilestone(ctx context.Context, client *github.Client, repoID types.Rep
 			}
 			_, _, err := client.Issues.Edit(ctx, repoID.Owner, repoID.RepositoryName, *issue.Number, ir)
 			if err != nil {
-				return err
+				return fmt.Errorf("issue edit: %w", err)
 			}
 		}
 	case issue.Milestone.GetID() == mile.GetID():

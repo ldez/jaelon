@@ -11,13 +11,15 @@ import (
 
 // Find Milestone.
 func Find(ctx context.Context, client *github.Client, owner, repositoryName string, major, minor int64) (*github.Milestone, error) {
+	// TODO(ldez): get all the milestones.
 	opt := &github.MilestoneListOptions{
-		State: "all",
+		State:     "all",
+		Direction: "desc",
 	}
 
 	milestones, _, err := client.Issues.ListMilestones(ctx, owner, repositoryName, opt)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("list milestones: %w", err)
 	}
 
 	expectedTitle := strconv.FormatInt(major, 10) + "." + strconv.FormatInt(minor, 10)

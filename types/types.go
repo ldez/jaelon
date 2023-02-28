@@ -6,14 +6,14 @@ type Configuration struct {
 	PreviousVersionTemplate string
 	ReleaseBranchTemplate   string
 	BaseBranch              string
-	Major                   int64  `short:"a" description:"Major version part of the Milestone."`
-	Minor                   int64  `short:"i" description:"Minor version part of the Milestone."`
-	Current                 bool   `short:"c" description:"Follow the head of master."`
-	Owner                   string `short:"o" description:"Repository owner."`
-	RepositoryName          string `long:"repo-name" short:"r" description:"Repository name."`
-	GitHubToken             string `long:"token" short:"t" description:"GitHub Token."`
-	Debug                   bool   `long:"debug" description:"Debug mode."`
-	DryRun                  bool   `long:"dry-run" description:"Dry run mode."`
+	Major                   int64
+	Minor                   int64
+	Current                 bool
+	Owner                   string
+	RepositoryName          string
+	GitHubToken             string
+	Debug                   bool
+	DryRun                  bool
 }
 
 // RepoID GitHub repo ID.
