@@ -6,7 +6,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/google/go-github/v50/github"
+	"github.com/google/go-github/v60/github"
 )
 
 // Find Milestone.

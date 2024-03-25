@@ -9,7 +9,7 @@ import (
 	"syscall"
 
 	"github.com/ettle/strcase"
-	"github.com/google/go-github/v50/github"
+	"github.com/google/go-github/v60/github"
 	"github.com/ldez/jaelon/issue"
 	"github.com/ldez/jaelon/milestone"
 	"github.com/ldez/jaelon/types"
